@@ -77,11 +77,8 @@ public class AccountService {
                     optionalConsent.get().getTppServiceSessionId());
         }
         log.info("LoA no valid ais consent for user {} bank {} available", sessionEntity.getUserEntity().getLoginUserName(), bankID);
-        // FIXME: HACKETTY-HACK - force consent retrieval for transactions on ALL accounts
-        // Should be superseded and fixed with
-        // https://github.com/adorsys/open-banking-gateway/issues/303
-        return tppAisClient.getTransactions(
-                UUID.randomUUID().toString(), // As consent is missing this will be ignored
+        // FIXME
+        return tppAisClient.getAccounts(
                 tppProperties.getServiceSessionPassword(),
                 sessionEntity.getUserEntity().getLoginUserName(),
                 RedirectUrlsEntity.buildOkUrl(uiConfig, redirectCode),
@@ -91,6 +88,8 @@ public class AccountService {
                 OperationType.AIS.toString(),
                 COMPUTE_X_REQUEST_SIGNATURE,
                 COMPUTE_FINTECH_ID,
-                bankID, null, null, null, null, null, null, null);
+                bankID,
+                null,
+                 null);
     }
 }
