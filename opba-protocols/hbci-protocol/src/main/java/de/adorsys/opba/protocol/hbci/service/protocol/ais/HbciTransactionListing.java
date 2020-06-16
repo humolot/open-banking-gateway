@@ -17,25 +17,31 @@ import de.adorsys.opba.protocol.hbci.context.TransactionListHbciContext;
 import de.adorsys.opba.protocol.hbci.service.protocol.ais.dto.AisListTransactionsResult;
 import lombok.RequiredArgsConstructor;
 import org.flowable.engine.delegate.DelegateExecution;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+
+import static de.adorsys.multibanking.domain.transaction.LoadTransactions.BookingStatus.BOOKED;
 
 @Service("hbciTransactionListing")
 @RequiredArgsConstructor
 public class HbciTransactionListing extends ValidatedExecution<TransactionListHbciContext> {
 
-    private final ApplicationEventPublisher eventPublisher;
     private final OnlineBankingService onlineBankingService;
 
     @Override
     protected void doRealExecution(DelegateExecution execution, TransactionListHbciContext context) {
         HbciConsent consent = context.getHbciDialogConsent();
-        TransactionRequest<LoadTransactions> request = create(new LoadTransactions(), new BankApiUser(), new BankAccess(), context.getBank(), consent);
         BankAccount account = new BankAccount();
         account.setIban(context.getAccountIban());
-        request.getTransaction().setPsuAccount(account);
+        TransactionRequest<LoadTransactions> request = create(
+                createLoadTransactions(account),
+                new BankApiUser(),
+                new BankAccess(),
+                context.getBank(),
+                consent
+        );
         TransactionsResponse response = onlineBankingService.loadTransactions(request);
 
         if (null == response.getAuthorisationCodeResponse()) {
@@ -64,6 +70,16 @@ public class HbciTransactionListing extends ValidatedExecution<TransactionListHb
                     ctx.setTanChallengeRequired(true);
                 }
         );
+    }
+
+    private static LoadTransactions createLoadTransactions(BankAccount account) {
+        LoadTransactions loadBookings = new LoadTransactions();
+        loadBookings.setBookingStatus(BOOKED);
+        loadBookings.setPsuAccount(account);
+        loadBookings.setDateFrom(null);
+        loadBookings.setDateTo(LocalDate.now());
+        loadBookings.setWithBalance(true);
+        return loadBookings;
     }
 
     public static <T extends AbstractTransaction> TransactionRequest<T> create(T transaction,
